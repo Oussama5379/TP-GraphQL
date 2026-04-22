@@ -1,3 +1,11 @@
+enum Role {
+  USER
+  ADMIN
+}
+
 type User {
-  _placeholder: String
+  id: ID!
+  name: String!
+  email: String!
+  role: Role!
 }

@@ -1,3 +1,13 @@
+type Cv {
+  id: ID!
+  name: String!
+  age: Int!
+  job: String!
+  user: User
+  skills: [Skill!]
+}
+
 type Query {
-  _placeholder: String
+  cvs: [Cv!]!
+  cv(id: ID!): Cv
 }
