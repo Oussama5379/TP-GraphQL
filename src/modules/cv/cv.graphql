@@ -11,3 +11,26 @@ type Query {
   cvs: [Cv!]!
   cv(id: ID!): Cv
 }
+
+input CreateCvInput {
+  name: String!
+  age: Int!
+  job: String!
+  ownerId: ID!
+  skillIds: [ID!]!
+}
+
+input UpdateCvInput {
+  id: ID!
+  name: String
+  age: Int
+  job: String
+  ownerId: ID
+  skillIds: [ID!]
+}
+
+type Mutation {
+  createCv(createCvInput: CreateCvInput!): Cv!
+  updateCv(updateCvInput: UpdateCvInput!): Cv!
+  removeCv(id: ID!): Boolean!
+}
