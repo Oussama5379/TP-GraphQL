@@ -1,10 +1,13 @@
 import { Injectable } from '@nestjs/common';
+import * as crypto from 'node:crypto';
+import { GraphQLError } from 'graphql';
 import {
   CvRecord,
   DatabaseService,
   SkillRecord,
   UserRecord,
 } from '../../database/database.service';
+import type { CreateCvInput, UpdateCvInput } from '../../graphql';
 import { SkillService } from '../skill/skill.service';
 import { UserService } from '../user/user.service';
 
@@ -34,5 +37,92 @@ export class CvService {
       .map((cvSkill) => cvSkill.skillId);
 
     return this.skillService.findByIds(skillIds);
+  }
+
+  create(input: CreateCvInput): CvRecord {
+    const user = this.userService.findOneById(input.ownerId);
+    if (!user) {
+      throw new GraphQLError('User not found');
+    }
+
+    const skills = this.skillService.findByIds(input.skillIds);
+    if (skills.length !== input.skillIds.length) {
+      throw new GraphQLError('One or more skills not found');
+    }
+
+    const { skillIds, ...cvInput } = input;
+    const newCv: CvRecord = { id: crypto.randomUUID(), ...cvInput };
+
+    this.db.cvs.push(newCv);
+
+    input.skillIds.forEach((skillId) => {
+      this.db.cvSkills.push({ cvId: newCv.id, skillId });
+    });
+
+    return newCv;
+  }
+
+  update(input: UpdateCvInput): CvRecord {
+    const index = this.db.cvs.findIndex((cv) => cv.id === input.id);
+    if (index === -1) {
+      throw new GraphQLError('CV not found');
+    }
+
+    if (input.ownerId !== undefined && input.ownerId !== null) {
+      const user = this.userService.findOneById(input.ownerId);
+      if (!user) {
+        throw new GraphQLError('User not found');
+      }
+    }
+
+    if (input.skillIds !== undefined && input.skillIds !== null) {
+      const skills = this.skillService.findByIds(input.skillIds);
+      if (skills.length !== input.skillIds.length) {
+        throw new GraphQLError('One or more skills not found');
+      }
+
+      const remainingCvSkills = this.db.cvSkills.filter(
+        (cvSkill) => cvSkill.cvId !== input.id,
+      );
+
+      remainingCvSkills.push(
+        ...input.skillIds.map((skillId) => ({ cvId: input.id, skillId })),
+      );
+
+      this.db.cvSkills.splice(0, this.db.cvSkills.length, ...remainingCvSkills);
+    }
+
+    const updatedCv: CvRecord = {
+      ...this.db.cvs[index],
+      ...(input.name !== undefined && input.name !== null
+        ? { name: input.name }
+        : {}),
+      ...(input.age !== undefined && input.age !== null
+        ? { age: input.age }
+        : {}),
+      ...(input.job !== undefined && input.job !== null
+        ? { job: input.job }
+        : {}),
+      ...(input.ownerId !== undefined && input.ownerId !== null
+        ? { ownerId: input.ownerId }
+        : {}),
+    };
+
+    this.db.cvs[index] = updatedCv;
+    return this.db.cvs[index];
+  }
+
+  remove(id: string): boolean {
+    const index = this.db.cvs.findIndex((cv) => cv.id === id);
+    if (index === -1) {
+      throw new GraphQLError('CV not found');
+    }
+
+    this.db.cvs.splice(index, 1);
+
+    const remainingCvSkills = this.db.cvSkills.filter((cs) => cs.cvId !== id);
+    this.db.cvSkills.splice(0, this.db.cvSkills.length, ...remainingCvSkills);
+
+    return true;
   }
 }
