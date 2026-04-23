@@ -26,6 +26,7 @@
     "@nestjs/graphql": "^13.3.0",
     "@nestjs/platform-express": "^11.0.1",
     "graphql": "^16.13.2",
+    "graphql-subscriptions": "^3.0.0",
     "graphql-ws": "^6.0.8",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1"

@@ -1,5 +1,2 @@
-export const CV_EVENTS = {
-  CREATED: 'cv.created',
-  UPDATED: 'cv.updated',
-  DELETED: 'cv.deleted',
-} as const;
+export const CV_CHANGED = 'cvChanged' as const;
+export type CvAction = 'CREATED' | 'UPDATED' | 'DELETED';
