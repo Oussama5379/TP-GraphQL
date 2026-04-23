@@ -34,3 +34,12 @@ type Mutation {
   updateCv(updateCvInput: UpdateCvInput!): Cv!
   removeCv(id: ID!): Boolean!
 }
+
+type CvChangedPayload {
+  action: String!
+  cv: Cv
+}
+
+type Subscription {
+  cvChanged: CvChangedPayload!
+}

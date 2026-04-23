@@ -1,12 +1,14 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import * as crypto from 'node:crypto';
 import { GraphQLError } from 'graphql';
+import { PubSub } from 'graphql-subscriptions';
 import {
   CvRecord,
   DatabaseService,
   SkillRecord,
   UserRecord,
 } from '../../database/database.service';
+import { CV_CHANGED } from '../../common/events/cv.events';
 import type { CreateCvInput, UpdateCvInput } from '../../graphql';
 import { SkillService } from '../skill/skill.service';
 import { UserService } from '../user/user.service';
@@ -17,6 +19,7 @@ export class CvService {
     private readonly db: DatabaseService,
     private readonly userService: UserService,
     private readonly skillService: SkillService,
+    @Inject('PUB_SUB') private readonly pubSub: PubSub,
   ) {}
 
   findAll(): CvRecord[] {
@@ -39,7 +42,7 @@ export class CvService {
     return this.skillService.findByIds(skillIds);
   }
 
-  create(input: CreateCvInput): CvRecord {
+  async create(input: CreateCvInput): Promise<CvRecord> {
     const user = this.userService.findOneById(input.ownerId);
     if (!user) {
       throw new GraphQLError('User not found');
@@ -59,10 +62,14 @@ export class CvService {
       this.db.cvSkills.push({ cvId: newCv.id, skillId });
     });
 
+    await this.pubSub.publish(CV_CHANGED, {
+      cvChanged: { action: 'CREATED', cv: newCv },
+    });
+
     return newCv;
   }
 
-  update(input: UpdateCvInput): CvRecord {
+  async update(input: UpdateCvInput): Promise<CvRecord> {
     const index = this.db.cvs.findIndex((cv) => cv.id === input.id);
     if (index === -1) {
       throw new GraphQLError('CV not found');
@@ -109,16 +116,25 @@ export class CvService {
     };
 
     this.db.cvs[index] = updatedCv;
+
+    await this.pubSub.publish(CV_CHANGED, {
+      cvChanged: { action: 'UPDATED', cv: updatedCv },
+    });
+
     return this.db.cvs[index];
   }
 
-  remove(id: string): boolean {
+  async remove(id: string): Promise<boolean> {
     const index = this.db.cvs.findIndex((cv) => cv.id === id);
     if (index === -1) {
       throw new GraphQLError('CV not found');
     }
 
     this.db.cvs.splice(index, 1);
+
+    await this.pubSub.publish(CV_CHANGED, {
+      cvChanged: { action: 'DELETED', cv: null },
+    });
 
     const remainingCvSkills = this.db.cvSkills.filter((cs) => cs.cvId !== id);
     this.db.cvSkills.splice(0, this.db.cvSkills.length, ...remainingCvSkills);

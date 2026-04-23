@@ -53,6 +53,15 @@ export abstract class IMutation {
     abstract removeCv(id: string): boolean | Promise<boolean>;
 }
 
+export class CvChangedPayload {
+    action: string;
+    cv?: Nullable<Cv>;
+}
+
+export abstract class ISubscription {
+    abstract cvChanged(): CvChangedPayload | Promise<CvChangedPayload>;
+}
+
 export class Skill {
     id: string;
     designation: string;
